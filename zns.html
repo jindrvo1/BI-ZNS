@@ -1,0 +1,227 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>ZNS</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script> 
+		<script>
+			$(document).ready(function(){
+				$('#slider_val').text($('#answer_slider').val());
+				present_question();
+
+				$('#answer_slider').on("input change", function(){
+					var self = $(this);
+					$('#slider_val').text(self.val());
+				});
+
+				$('#why_button').click(function(){
+					$('#result_why').slideDown(1000);
+				});
+
+				$('#reset_button').click(function(){
+					questions_cp = Array.from(questions);
+					answers = [];
+					$('#slider_val').text($('#answer_slider').val());
+					present_question();
+					$('#wrapper_q').css('display', 'block');
+					$('#wrapper_r').css('display', 'none');
+					$('#result_why').css('display', 'none');
+				});
+
+				$('#answer_button').click(function(){
+					answers.push(parseFloat($('#slider_val').text()));
+					if (questions_cp.length > 0) { 
+						present_question();
+					} else {
+						$('#wrapper_q').css('display', 'none');
+						$('#wrapper_r').css('display', 'block');
+						var results = get_results(answers, relations);
+						$('#result').text(conclusions[get_result(results[0])-1]);
+						answers.forEach(function(val, index){
+							var row = '<tr><td>'+questions[index]+'</td><td>'+val+'</td></tr>';
+							$('#why_answers tr:last').after(row);
+						});
+						var best_for_each_hospoda = get_best_for_each_hospoda(results);
+						Object.keys(best_for_each_hospoda).forEach(function(key){
+							var row = '<tr><td valign="top">'+conclusions[key]+'</td><td valign="top">'+best_for_each_hospoda[key]+'</td><td>';
+							row += '<ul>';
+							results[1].forEach(function(val, index){
+								if (results[2][index]-1 == key){
+									row += '<li>'+val+': '+results[0][index]+'</li>';
+								}
+							});
+							row += '</ul>';
+							row += '</td></tr>';
+							$('#why_cos tr:last').after(row);
+						});
+					}
+				});
+			});
+
+			function get_best_for_each_hospoda(res) {
+				best = {};
+
+				conclusions.forEach(function(val, index){
+					best[index] = -1;
+				});
+
+				res[0].forEach(function(val, index){
+					if (val > best[res[2][index]-1]) {
+						best[res[2][index]-1] = val;
+					}
+				});
+
+				return best;
+			}
+
+			function present_question() {
+				var curr_question = questions_cp.shift();
+				$('#question').text(curr_question);
+				$('#answer_slider').val('0.5');
+				$('#slider_val').text('0.5');
+			}
+
+			function get_result(distances) {
+				var max = -1;
+				var max_index = 0;
+
+				distances.forEach(function(val, index){
+					if (val > max) {
+						max = val;
+						max_index = index;
+					}
+				});
+
+				return relations[max_index][1];
+			}
+
+			function get_results(answers, relations) {
+				var distances = [];
+				var rels = [];
+				var relations_targets = [];
+				relations.forEach(function(val){
+					distances.push(cos_sim(answers, val[0]));
+					rels.push(val[0]);
+					relations_targets.push(val[1]);
+				});
+				return [distances, rels, relations_targets];
+			}
+
+			function cos_sim(answers, relation) {
+				rel = [];
+				answers.forEach(function(ans, index){
+					if (relation.indexOf(index+1) >= 0) {
+						rel.push(1);
+					} else {
+						rel.push(0.5);
+					}
+				});
+
+				var numerator = 0;
+				var denominator_1 = 0;
+				var denominator_2 = 0;
+
+				answers.forEach(function(ans, index){
+					numerator += rel[index]*answers[index];
+					denominator_1 += rel[index]*rel[index];
+					denominator_2 += answers[index]*answers[index];
+				});
+
+				return numerator/(Math.sqrt(denominator_1)*Math.sqrt(denominator_2));
+			}
+
+			var questions = [
+			   "1. Jdeš jen na jedno?",
+			   "2. Pivo?",
+			   "3. Víno?",
+			   "4. Koktejly?",
+			   "5. Tvrdej?", 
+			   "6. Máš spousty peněz?",
+			   "7. Chceš jíst?", 
+			   "8. Plnohodnotná večeře?",
+			   "9. Jsi vegetarián?",
+			   "10. Máš rád burgery?",
+			   "11. Chceš si pivo sám točit?",
+			   "12. Chceš pivo z malýho pivovaru?",
+			   "13. Máš silnou preferenci vůči Plzni?",
+			   "14. Máš silnou preferenci vůči Kozlovi?",
+			   "15. Máš silnou preferenci vůči Budvaru?",
+			   "16. Chceš to mít fancy?",
+			   "17. Jdeš sám?",
+			   "18. Jdeš s kamarády?",
+			   "19. Jdeš s rodinou?",
+			   "20. Jdeš s kolegy?",
+			   "21. Jdeš s přítelkyní?",
+			   "22. Chceš na ně/ní zapůsobit?",
+			   "23. Nechceš jít radši s kamarády?",
+			   "24. Plánuješ se vyndat?",
+			   "25. Plánujete potom jít do nonstopu?",
+			   "26. Bydlíš poblíž centra?",
+			   "27. Jsi ochotnej do centra dojet?",
+			   "28. Preferuješ metro?",
+			   "29. Preferuješ tramvaj?",
+			   "30. Nebojíš se vyšší ceny?",
+			];
+
+			var conclusions = [
+			   "1. U Glaubiců",
+			   "2. Kozlovna",
+			   "3. Budvarka",
+			   "4. The Pub",
+			   "5. U Hrocha",
+			   "6. Fancy lounge pub",
+			   "7. Vínograf Wine Bar",
+			];
+
+			var relations = [
+			   [[1, 2, 6, 16], 6],
+			   [[3, 6, 16, 22], 7],
+			   [[1, 2, 13, 14], 2],
+			   [[1, 2, 13, 15], 3],
+			   [[1, 2, 13, 11], 4],
+			   [[1, 2, 13, 11, 30], 4],
+			   [[1, 2, 6, 17, 18, 24], 1],
+			   [[1, 2, 6, 7, 8, 9, 10], 5],
+			   [[1, 2, 3, 6, 7, 8, 9, 10], 5],
+			   [[1, 2, 6, 17, 18, 24, 25], 1],
+			   [[1, 2, 3, 4, 6, 7 , 8, 9, 10], 5],
+			   [[1, 2, 6, 17, 18, 24, 26, 27, 29], 1],
+			   [[1, 2, 6, 17, 18, 24, 26, 27, 28], 1],
+			   [[1, 2, 3, 4, 5, 6, 7 , 8, 9, 10], 5],
+			   [[1, 2, 6, 17, 18, 19, 22, 23, 24, 26, 27, 28], 1],
+			   [[1, 2, 6, 17, 18, 19, 20, 22, 23, 24, 26, 27, 28], 1],
+			   [[1, 2, 6, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28], 1]
+			];
+
+			var answers = [];
+			var questions_cp = Array.from(questions);
+		</script>
+	</head>
+	<body>
+		<div id="wrapper_q">
+			<h2 id="question"></h2>
+			<table>
+				<tr><td>Ne <input type="range" id="answer_slider" min="0" max="1" step="0.1" value="0.5"> Ano</td></tr>
+				<tr><td id="slider_val" style="text-align: center;"></td></tr>
+				<tr><td style="text-align: center;"><button id="answer_button">Odpovědět</button></td></tr>
+			</table>
+		</div>
+		<div id="wrapper_r" style="display: none;">
+			TAK TO JE JASNÝ, MUSÍŠ DO HOSPODY
+			<h1 id="result"></h1>
+			<button id="reset_button">Tohle je nejlepší znalostní systém ever, to si chci projít znova! (reset prostě)</button><br /><br />
+			<button id="why_button">PROČ SEM, PROČ ZROVNA SEM?!</button>
+			<div id="result_why" style="display: none;">
+				Tvoje odpovědi byly:
+				<table id="why_answers">
+					<tr><th>Otázka</th><th>Odpověď</th></tr>
+				</table>
+				<div style="margin-top: 30px;">
+					To odpovídá kosinovejm vzdálenostem vektorů s ideálníma výsledkama:
+					<table id="why_cos">
+						<tr><th>Hospoda</th><th>Kosinová similarita</th></tr>
+					</table>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
